@@ -4,9 +4,9 @@
 
 1. Clone the repository
 
-   ```bash
-   git clone https://github.com/DevKrishnasai/forestfire-prediction.git
-   ```
+```bash
+git clone https://github.com/DevKrishnasai/forestfire-prediction.git
+```
 
 2. Install the required libraries using the following command:
 
@@ -17,5 +17,5 @@ pip install flask scikit-learn pandas numpy seaborn matplotlib
 3. Run the following command to start the application:
 
 ```bash
-python app.py
+python server.py
 ```
