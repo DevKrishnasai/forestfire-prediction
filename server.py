@@ -3,10 +3,18 @@ import numpy as np
 from flask import Flask, request, render_template, jsonify
 import pickle
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-CSV_DIR = "./data"
+# Configure logging
+handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=1)
+handler.setLevel(logging.INFO)
+app.logger.addHandler(handler)
+
+# Load configurations from environment variables
+CSV_DIR = os.getenv('CSV_DIR', './data')
 forest_csv_files = {
     'Algeria': 'algeria_forest.csv',
     'Algerian': 'algerian_forest.csv',
@@ -26,7 +34,7 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if request.method == 'POST':
+    try:
         forest_selected = request.form['forest']
         temp = float(request.form['temp'])
         rain = float(request.form['rain'])
@@ -37,7 +45,8 @@ def predict():
         scaler_filename = f'./pkl/scaler_{forest_selected.lower()}_forest.pkl'
 
         if not os.path.exists(model_filename) or not os.path.exists(scaler_filename):
-            return jsonify({'error': 'Model or scaler file not found. Please check the files.'})
+            app.logger.error(f'Model or scaler file not found for {forest_selected}')
+            return jsonify({'error': 'Model or scaler file not found. Please check the files.'}), 404
 
         model = pickle.load(open(model_filename, 'rb'))
         scaler = pickle.load(open(scaler_filename, 'rb'))
@@ -58,11 +67,16 @@ def predict():
             'percentage_burnt': round(percentage_burnt, 2)
         })
 
+    except Exception as e:
+        app.logger.error(f'Error in predict: {str(e)}')
+        return jsonify({'error': 'An error occurred while processing your request.'}), 500
+
 @app.route('/forest_data', methods=['GET'])
 def forest_data():
     forest = request.args.get('forest')
     if forest not in forest_csv_files:
-        return jsonify({'error': 'Forest not found'})
+        app.logger.warning(f'Forest not found: {forest}')
+        return jsonify({'error': 'Forest not found'}), 404
 
     csv_path = os.path.join(CSV_DIR, forest_csv_files[forest])
     df = pd.read_csv(csv_path)
@@ -75,4 +89,5 @@ def forest_data():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Run the app only in production mode
+    app.run(host='0.0.0.0', port=8000, debug=False)
