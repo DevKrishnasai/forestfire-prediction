@@ -64,13 +64,14 @@
             border: 1px solid #e2e8f0;
             border-radius: 0.25rem;
             font-size: 1rem;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, transform 0.2s;
         }
 
         select:focus,
         input:focus {
             outline: none;
             border-color: #4299e1;
+            transform: scale(1.02);
         }
 
         button {
@@ -81,11 +82,12 @@
             border-radius: 0.25rem;
             font-size: 1rem;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
+            transition: background-color 0.3s, transform 0.2s;
         }
 
         button:hover {
             background-color: #3182ce;
+            transform: translateY(-2px);
         }
 
         button:active {
@@ -138,7 +140,44 @@
             .sidebar {
                 width: 100%;
                 max-height: 50vh;
+                padding: 1rem;
             }
+
+            #result,
+            #current-readings {
+                position: fixed;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 90%;
+                max-width: none;
+            }
+
+            #result {
+                bottom: 10px;
+            }
+
+            #current-readings {
+                top: 10px;
+            }
+        }
+
+        /* Hide scrollbars */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .sidebar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none;
         }
     </style>
 </head>
@@ -182,12 +221,12 @@
             'Amazon': {
                 center: [-60, -3],
                 zoom: 5,
-                area: 5500000
+                area: 550000
             },
             'California': {
                 center: [-120, 37],
                 zoom: 6,
-                area: 1000000
+                area: 100000
             },
             'Algeria': {
                 center: [3, 36],
@@ -230,11 +269,10 @@
 
             vectorLayer.getSource().clear();
 
-            // Create a circle feature to represent the forest area
             const circleFeature = new ol.Feature({
                 geometry: new ol.geom.Circle(
                     ol.proj.fromLonLat(forestInfo.center),
-                    Math.sqrt(forestInfo.area * 1000000 / Math.PI) // Radius in meters
+                    Math.sqrt(forestInfo.area * 1000000 / Math.PI)
                 )
             });
 
@@ -278,11 +316,10 @@
                 const forestInfo = forestData[data.forest];
                 const burntAreaRatio = data.burnt_area / data.total_area;
 
-                // Create a circle feature to represent the burnt area
                 const burntAreaFeature = new ol.Feature({
                     geometry: new ol.geom.Circle(
                         ol.proj.fromLonLat(forestInfo.center),
-                        Math.sqrt(data.burnt_area * 10000 / Math.PI) // Radius in meters
+                        Math.sqrt(data.burnt_area * 10000 / Math.PI)
                     )
                 });
 
@@ -298,7 +335,6 @@
             gsap.to('#result', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
             document.getElementById('result').classList.remove('hidden');
 
-            // Update current readings
             document.getElementById('current-readings').innerHTML = `
                 <h3>Current Readings</h3>
                 <p>Temperature: ${formData.get('temp')}°C</p>
@@ -315,8 +351,27 @@
 
         // Initialize map with the first forest
         updateMap(document.getElementById('forest').value);
-    </script>
 
+        // Add animations to form inputs
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                gsap.to(input, { scale: 1.05, duration: 0.2 });
+            });
+            input.addEventListener('blur', () => {
+                gsap.to(input, { scale: 1, duration: 0.2 });
+            });
+        });
+
+        // Add animation to submit button
+        const submitButton = document.querySelector('button[type="submit"]');
+        submitButton.addEventListener('mouseenter', () => {
+            gsap.to(submitButton, { y: -5, duration: 0.2 });
+        });
+        submitButton.addEventListener('mouseleave', () => {
+            gsap.to(submitButton, { y: 0, duration: 0.2 });
+        });
+    </script>
 </body>
 
 </html>
