@@ -5,8 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forest Fire Prediction</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.9.0/css/ol.css">
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.9.0/build/ol.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -27,6 +30,7 @@
             padding: 2rem;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
         }
 
         .main-content {
@@ -60,6 +64,13 @@
             border: 1px solid #e2e8f0;
             border-radius: 0.25rem;
             font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        select:focus,
+        input:focus {
+            outline: none;
+            border-color: #4299e1;
         }
 
         button {
@@ -70,11 +81,15 @@
             border-radius: 0.25rem;
             font-size: 1rem;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, transform 0.1s;
         }
 
         button:hover {
             background-color: #3182ce;
+        }
+
+        button:active {
+            transform: scale(0.98);
         }
 
         #map {
@@ -90,6 +105,7 @@
             position: absolute;
             max-width: 300px;
             z-index: 1000;
+            transition: opacity 0.3s, transform 0.3s;
         }
 
         #result {
@@ -103,7 +119,26 @@
         }
 
         .hidden {
-            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+
+        .ol-zoom {
+            top: 20px;
+            left: unset;
+            right: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 50vh;
+            }
         }
     </style>
 </head>
@@ -115,9 +150,9 @@
             <form id="predictionForm">
                 <label for="forest">Select Forest:</label>
                 <select name="forest" id="forest" required>
-                    {% for forest in forests %}
-                    <option value="{{ forest }}">{{ forest }}</option>
-                    {% endfor %}
+                    <option value="Amazon">Amazon</option>
+                    <option value="California">California</option>
+                    <option value="Algeria">Algeria</option>
                 </select>
 
                 <label for="temp">Temperature (°C):</label>
@@ -142,63 +177,78 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
         const forestData = {
+            'Amazon': {
+                center: [-60, -3],
+                zoom: 5,
+                area: 5500000
+            },
+            'California': {
+                center: [-120, 37],
+                zoom: 6,
+                area: 1000000
+            },
             'Algeria': {
-                center: [28.0339, 1.6596],  // Coordinates of the Algeria forest
-                bounds: [
-                    [27.5, 1.1],
-                    [28.5, 2.1]
-                ],
-                zoom: 10,  // Appropriate zoom level
-                area: 124
-            },
-            'Algerian': {
-                center: [36.5, 2.9],  // Coordinates of the Algerian forest
-                bounds: [
-                    [36.0, 2.4],
-                    [37.0, 3.4]
-                ],
-                zoom: 12,  // Appropriate zoom level
-                area: 300
-            },
-            'Sidibel': {
-                center: [36.9, 4.1],  // Coordinates of the Sidibel forest
-                bounds: [
-                    [36.4, 3.6],
-                    [37.4, 4.6]
-                ],
-                zoom: 12,  // Appropriate zoom level
-                area: 200
+                center: [3, 36],
+                zoom: 7,
+                area: 170000
             }
         };
 
-        let map = L.map('map').setView([28.0339, 1.6596], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        let map, vectorLayer;
 
-        let currentForestLayer;
-        let burntAreaLayer;
+        function initMap() {
+            map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM()
+                    })
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([0, 0]),
+                    zoom: 2
+                })
+            });
+
+            vectorLayer = new ol.layer.Vector({
+                source: new ol.source.Vector()
+            });
+            map.addLayer(vectorLayer);
+        }
 
         function updateMap(forest) {
-            if (currentForestLayer) {
-                map.removeLayer(currentForestLayer);
-            }
-            if (burntAreaLayer) {
-                map.removeLayer(burntAreaLayer);
-            }
-
             const forestInfo = forestData[forest];
+            const view = map.getView();
 
-            // Center and zoom the map to the selected forest
-            map.setView(forestInfo.center, forestInfo.zoom);
+            view.animate({
+                center: ol.proj.fromLonLat(forestInfo.center),
+                zoom: forestInfo.zoom,
+                duration: 1000
+            });
 
-            // Uncomment if you want to draw a rectangle showing the forest area
-            currentForestLayer = L.rectangle(forestInfo.bounds, { color: "#2c5282", weight: 2, fillOpacity: 0.2 })
-                .addTo(map)
-                .bindPopup(`${forest} Forest<br>Total Area: ${forestInfo.area} hectares`);
+            vectorLayer.getSource().clear();
+
+            // Create a circle feature to represent the forest area
+            const circleFeature = new ol.Feature({
+                geometry: new ol.geom.Circle(
+                    ol.proj.fromLonLat(forestInfo.center),
+                    Math.sqrt(forestInfo.area * 1000000 / Math.PI) // Radius in meters
+                )
+            });
+
+            circleFeature.setStyle(new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: '#2c5282',
+                    width: 3
+                }),
+                fill: new ol.style.Fill({
+                    color: 'rgba(44, 82, 130, 0.1)'
+                })
+            }));
+
+            vectorLayer.getSource().addFeature(circleFeature);
         }
 
         document.getElementById('forest').addEventListener('change', (e) => {
@@ -227,18 +277,25 @@
 
                 const forestInfo = forestData[data.forest];
                 const burntAreaRatio = data.burnt_area / data.total_area;
-                const burntAreaBounds = [
-                    forestInfo.bounds[0],
-                    [
-                        forestInfo.bounds[0][0] + (forestInfo.bounds[1][0] - forestInfo.bounds[0][0]) * Math.sqrt(burntAreaRatio),
-                        forestInfo.bounds[0][1] + (forestInfo.bounds[1][1] - forestInfo.bounds[0][1]) * Math.sqrt(burntAreaRatio)
-                    ]
-                ];
 
-                burntAreaLayer = L.rectangle(burntAreaBounds, { color: "#e53e3e", weight: 2, fillOpacity: 0.5 })
-                    .addTo(map)
-                    .bindPopup(`Predicted Burnt Area: ${data.burnt_area} hectares`);
+                // Create a circle feature to represent the burnt area
+                const burntAreaFeature = new ol.Feature({
+                    geometry: new ol.geom.Circle(
+                        ol.proj.fromLonLat(forestInfo.center),
+                        Math.sqrt(data.burnt_area * 10000 / Math.PI) // Radius in meters
+                    )
+                });
+
+                burntAreaFeature.setStyle(new ol.style.Style({
+                    fill: new ol.style.Fill({
+                        color: 'rgba(229, 62, 62, 0.5)'
+                    })
+                }));
+
+                vectorLayer.getSource().addFeature(burntAreaFeature);
             }
+
+            gsap.to('#result', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
             document.getElementById('result').classList.remove('hidden');
 
             // Update current readings
@@ -249,8 +306,12 @@
                 <p>Relative Humidity: ${formData.get('RH')}%</p>
                 <p>Wind Speed: ${formData.get('wind')}km/h</p>
             `;
+            gsap.to('#current-readings', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', delay: 0.2 });
             document.getElementById('current-readings').classList.remove('hidden');
         });
+
+        // Initialize map
+        initMap();
 
         // Initialize map with the first forest
         updateMap(document.getElementById('forest').value);

@@ -1,76 +1,60 @@
+import pandas as pd
+import numpy as np
 import os
 import pickle
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
 
-def train_and_save_model(dataset_path, forest_name):
-    # Load dataset
-    df = pd.read_csv(dataset_path)
+# Set paths for data and pkl directories
+DATA_DIR = './data'
+PKL_DIR = './pkl'
+os.makedirs(PKL_DIR, exist_ok=True)
 
-    # Data Preprocessing: Apply log transformation to the 'area' column
-    df['log_area'] = df['area'].apply(lambda x: np.log(x + 1))
+# List of forest datasets with filenames in the data directory
+forest_datasets = {
+    'Amazon': 'amazon_forest.csv',
+    'Algeria': 'algeria_forest.csv',
+    'California': 'california_forest.csv'
+}
 
-    # Select relevant features and target
-    features = df[['temp', 'rain', 'RH', 'wind']]
-    target = df['log_area']
+# Loop through each forest and generate corresponding model and scaler
+for forest_name, filename in forest_datasets.items():
+    # Construct the full path to the CSV file
+    file_path = os.path.join(DATA_DIR, filename)
+
+    # Load the dataset
+    try:
+        df = pd.read_csv(file_path)
+    except FileNotFoundError:
+        print(f"Error: {file_path} not found.")
+        continue
+
+    # Select features and target
+    X = df[['temp', 'rain', 'RH', 'wind']]
+    y = np.log(df['area'] + 1)  # Log(1 + area) to stabilize variance
+
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Scale the features
     scaler = StandardScaler()
-    scaled_features = scaler.fit_transform(features)
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    # Train-Test Split
-    X_train, X_test, y_train, y_test = train_test_split(scaled_features, target, test_size=0.2, random_state=42)
+    # Train the model
+    model = RandomForestRegressor(random_state=42, n_estimators=100)
+    model.fit(X_train_scaled, y_train)
 
-    # Train the RandomForest model
-    model = RandomForestRegressor(random_state=42)
-    model.fit(X_train, y_train)
+    # Save the model and scaler as .pkl files
+    model_filename = f'{PKL_DIR}/model_{forest_name.lower()}_forest.pkl'
+    scaler_filename = f'{PKL_DIR}/scaler_{forest_name.lower()}_forest.pkl'
 
-    # Define the parameter grid for hyperparameter tuning
-    param_grid = {
-        'n_estimators': [100, 200, 300],
-        'max_depth': [10, 20, 30],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
-    }
+    with open(model_filename, 'wb') as f:
+        pickle.dump(model, f)
+    with open(scaler_filename, 'wb') as f:
+        pickle.dump(scaler, f)
 
-    # Use GridSearchCV for hyperparameter tuning
-    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=3, n_jobs=-1, verbose=2)
-    grid_search.fit(X_train, y_train)
-
-    # Best model after tuning
-    best_model = grid_search.best_estimator_
-
-    # Save the trained model and scaler
-    model_filename = f'model_{forest_name}.pkl'
-    scaler_filename = f'scaler_{forest_name}.pkl'
-
-    with open(model_filename, 'wb') as model_file:
-        pickle.dump(best_model, model_file)
-
-    with open(scaler_filename, 'wb') as scaler_file:
-        pickle.dump(scaler, scaler_file)
-
-    os.makedirs('pkl', exist_ok=True)
-    os.rename(model_filename, f'pkl/{model_filename}')
-    os.rename(scaler_filename, f'pkl/{scaler_filename}')
-
-
-
-    print(f"Model and scaler saved for {forest_name}.")
-
-    # Example usage with different datasets for different forests
-forest_datasets = {
-    'algeria_forest': './data/algeria_forest.csv',
-    'algerian_forest': './data/algerian_forest.csv',
-    'sidibel_forest': './data/sidibel_forest.csv'
-}
-
-for forest_name, dataset_path in forest_datasets.items():
-    print("Training model for:", forest_name)
-    print("---------------------------------------")
-    train_and_save_model(dataset_path, forest_name)
-    print("---------------------------------------")
+    print(f'Model and scaler saved for {forest_name}:')
+    print(f'  Model -> {model_filename}')
+    print(f'  Scaler -> {scaler_filename}\n')

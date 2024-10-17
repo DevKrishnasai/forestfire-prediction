@@ -13,18 +13,21 @@ handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=1)
 handler.setLevel(logging.INFO)
 app.logger.addHandler(handler)
 
-# Load configurations from environment variables
+# Load directories from environment variables (or default paths)
 CSV_DIR = os.getenv('CSV_DIR', './data')
+PKL_DIR = os.getenv('PKL_DIR', './pkl')
+
+# Forest datasets and total areas
 forest_csv_files = {
+    'Amazon': 'amazon_forest.csv',
     'Algeria': 'algeria_forest.csv',
-    'Algerian': 'algerian_forest.csv',
-    'Sidibel': 'sidibel_forest.csv'
+    'California': 'california_forest.csv'
 }
 
 forest_total_areas = {
-    'Algeria': 13720,
-    'Algerian': 14920,
-    'Sidibel': 78900,
+    'Amazon': 13720,
+    'California': 14920,
+    'Algeria': 78900,
 }
 
 @app.route('/')
@@ -35,31 +38,41 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
+        # Get input data from form
         forest_selected = request.form['forest']
         temp = float(request.form['temp'])
         rain = float(request.form['rain'])
         RH = float(request.form['RH'])
         wind = float(request.form['wind'])
 
-        model_filename = f'./pkl/model_{forest_selected.lower()}_forest.pkl'
-        scaler_filename = f'./pkl/scaler_{forest_selected.lower()}_forest.pkl'
+        # Build model and scaler paths
+        model_filename = os.path.join(PKL_DIR, f'model_{forest_selected.lower()}_forest.pkl')
+        scaler_filename = os.path.join(PKL_DIR, f'scaler_{forest_selected.lower()}_forest.pkl')
 
+        # Check if model and scaler files exist
         if not os.path.exists(model_filename) or not os.path.exists(scaler_filename):
             app.logger.error(f'Model or scaler file not found for {forest_selected}')
             return jsonify({'error': 'Model or scaler file not found. Please check the files.'}), 404
 
-        model = pickle.load(open(model_filename, 'rb'))
-        scaler = pickle.load(open(scaler_filename, 'rb'))
+        # Load model and scaler
+        with open(model_filename, 'rb') as f:
+            model = pickle.load(f)
+        with open(scaler_filename, 'rb') as f:
+            scaler = pickle.load(f)
 
+        # Prepare input data for prediction
         features = np.array([[temp, rain, RH, wind]])
         scaled_features = scaler.transform(features)
 
+        # Predict burnt area
         pred_log_area = model.predict(scaled_features)
         pred_burnt_area = np.exp(pred_log_area) - 1
 
+        # Calculate percentage of burnt area
         total_area = forest_total_areas[forest_selected]
         percentage_burnt = (pred_burnt_area[0] / total_area) * 100
 
+        # Return the prediction as JSON
         return jsonify({
             'forest': forest_selected,
             'burnt_area': round(pred_burnt_area[0], 2),
@@ -74,13 +87,17 @@ def predict():
 @app.route('/forest_data', methods=['GET'])
 def forest_data():
     forest = request.args.get('forest')
+
+    # Check if the forest exists in the dataset mapping
     if forest not in forest_csv_files:
         app.logger.warning(f'Forest not found: {forest}')
         return jsonify({'error': 'Forest not found'}), 404
 
+    # Load the CSV data for the requested forest
     csv_path = os.path.join(CSV_DIR, forest_csv_files[forest])
     df = pd.read_csv(csv_path)
 
+    # Calculate and return average statistics
     return jsonify({
         'avg_temp': round(df['temp'].mean(), 2),
         'avg_rain': round(df['rain'].mean(), 2),
@@ -89,5 +106,5 @@ def forest_data():
     })
 
 if __name__ == '__main__':
-    # Run the app only in production mode
+    # Run the app in production mode
     app.run(host='0.0.0.0', port=8000, debug=False)
