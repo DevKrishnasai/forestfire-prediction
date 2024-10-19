@@ -13,9 +13,9 @@ os.makedirs(PKL_DIR, exist_ok=True)
 
 # List of forest datasets with filenames in the data directory
 forest_datasets = {
-    'Amazon': 'amazon_forest.csv',
-    'Algeria': 'algeria_forest.csv',
-    'California': 'california_forest.csv'
+    'Nainital': 'nainital_forest.csv',
+    'Jim Corbett': 'jim_forest.csv',
+    'Bandipur': 'bandipur_forest.csv'
 }
 
 # Loop through each forest and generate corresponding model and scaler

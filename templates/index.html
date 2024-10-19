@@ -189,9 +189,9 @@
             <form id="predictionForm">
                 <label for="forest">Select Forest:</label>
                 <select name="forest" id="forest" required>
-                    <option value="Amazon">Amazon</option>
-                    <option value="California">California</option>
-                    <option value="Algeria">Algeria</option>
+                    <option value="Nainital">Nainital</option>
+                    <option value="Jim Corbett">Jim Corbett</option>
+                    <option value="Bandipur">Bandipur</option>
                 </select>
 
                 <label for="temp">Temperature (°C):</label>
@@ -218,20 +218,20 @@
 
     <script>
         const forestData = {
-            'Amazon': {
-                center: [-60, -3],
-                zoom: 5,
-                area: 550000
+            'Nainital': {
+                center: [79.5126, 29.3803],
+                zoom: 8,
+                area: 27000 // Approximate area in hectares
             },
-            'California': {
-                center: [-120, 37],
-                zoom: 6,
-                area: 100000
+            'Jim Corbett': {
+                center: [78.7747, 29.5300],
+                zoom: 8,
+                area: 52100 // Approximate area in hectares
             },
-            'Algeria': {
-                center: [3, 36],
+            'Bandipur': {
+                center: [76.6241, 11.6545],
                 zoom: 7,
-                area: 170000
+                area: 87400 // Approximate area in hectares
             }
         };
 

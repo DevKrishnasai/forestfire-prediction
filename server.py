@@ -19,15 +19,15 @@ PKL_DIR = os.getenv('PKL_DIR', './pkl')
 
 # Forest datasets and total areas
 forest_csv_files = {
-    'Amazon': 'amazon_forest.csv',
-    'Algeria': 'algeria_forest.csv',
-    'California': 'california_forest.csv'
+    'Nainital': 'nainital_forest.csv',
+    'Jim Corbett': 'jim_forest.csv',
+    'Bandipur': 'bandipur_forest.csv'
 }
 
 forest_total_areas = {
-    'Amazon': 13720,
-    'California': 14920,
-    'Algeria': 78900,
+    'Nainital': 27000,
+    'Jim Corbett': 52100,
+    'Bandipur': 87400,
 }
 
 @app.route('/')
