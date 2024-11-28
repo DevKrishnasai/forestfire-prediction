@@ -8,13 +8,20 @@
 git clone https://github.com/DevKrishnasai/forestfire-prediction.git
 ```
 
-2. Install the required libraries using the following command:
+2. Create environment and setup
+   
+```bash
+python -m venv myenv
+myenv\Scripts\activate
+```
+
+3. Install the required libraries using the following command:
 
 ```bash
 pip install flask scikit-learn pandas numpy seaborn matplotlib
 ```
 
-3. Run the following command to start the application:
+4. Run the following command to start the application:
 
 ```bash
 python server.py
